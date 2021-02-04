@@ -11,6 +11,7 @@ const {
 	getUsuarios,
 	crearUsuario,
 	actualizarUsuario,
+	borrarUsuario,
 } = require('../controlers/usuarios');
 
 const router = Router();
@@ -33,9 +34,12 @@ router.put(
 	[
 		check('nombre', 'El nombre es obligatorio').not().isEmpty(),
 		check('email', 'El email es obligatorio').isEmail(),
-		check('role', 'El role es obligatorio').not().isEmpty(),
+		check('role', 'El role es obligatorio').isEmail(),
+		validarCampos,
 	],
 	actualizarUsuario
 );
+
+router.delete('/:id', borrarUsuario);
 
 module.exports = router;

@@ -57,10 +57,10 @@ const actualizarUsuario = async (req, resp = response) => {
 			});
 		}
 
-		if (usuarioDB.email === req.body.email) {
-			delete campos.email;
-		} else {
-			const existeEmail = await Usuario.findOne({ email: req.body.email });
+		const { password, google, email, ...campos } = req.body;
+
+		if (usuarioDB.email !== email) {
+			const existeEmail = await Usuario.findOne({ email });
 			if (existeEmail) {
 				return resp.status(400).json({
 					ok: false,
@@ -69,10 +69,7 @@ const actualizarUsuario = async (req, resp = response) => {
 			}
 		}
 
-		//Actualizaciones
-		const campos = req.body;
-		delete campos.password;
-		delete campos.google;
+		campos.email = email;
 
 		const usuarioActualizado = await Usuario.findByIdAndUpdate(uid, campos, {
 			new: true,
@@ -91,8 +88,36 @@ const actualizarUsuario = async (req, resp = response) => {
 	}
 };
 
+const borrarUsuario = async (req, resp = response) => {
+	try {
+		const uid = req.params.id;
+
+		const usuarioDB = await Usuario.findById(uid);
+		if (!usuarioDB) {
+			return resp.status(404).json({
+				ok: false,
+				msg: 'No existe un usuario por ese id',
+			});
+		}
+
+		await Usuario.findByIdAndDelete(uid);
+
+		resp.json({
+			ok: true,
+			msg: 'Usuario eliminado',
+		});
+	} catch (error) {
+		console.log(error);
+		resp.status(500).json({
+			ok: false,
+			msg: 'Hable con el administrador',
+		});
+	}
+};
+
 module.exports = {
 	getUsuarios,
 	crearUsuario,
 	actualizarUsuario,
+	borrarUsuario,
 };
