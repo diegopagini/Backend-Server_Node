@@ -1,7 +1,7 @@
 /**
  * /*
- *   Ruta
- *   '/api/hospitales'
+ *     Medicos
+ *     ruta: '/api/medico'
  *
  * @format
  */
@@ -17,16 +17,37 @@ const {
 	crearMedico,
 	actualizarMedico,
 	borrarMedico,
+	getMedicoById,
 } = require('../controllers/medicos');
 
 const router = Router();
 
-router.get('/', getMedicos);
+router.get('/', validarJWT, getMedicos);
 
-router.post('/', [], crearMedico);
+router.post(
+	'/',
+	[
+		validarJWT,
+		check('nombre', 'El nombre del médico es necesario').not().isEmpty(),
+		check('hospital', 'El hospital id debe de ser válido').isMongoId(),
+		validarCampos,
+	],
+	crearMedico
+);
 
-router.put('/:id', [], actualizarMedico);
+router.put(
+	'/:id',
+	[
+		validarJWT,
+		check('nombre', 'El nombre del médico es necesario').not().isEmpty(),
+		check('hospital', 'El hospital id debe de ser válido').isMongoId(),
+		validarCampos,
+	],
+	actualizarMedico
+);
 
-router.delete('/:id', borrarMedico);
+router.delete('/:id', validarJWT, borrarMedico);
+
+router.get('/:id', validarJWT, getMedicoById);
 
 module.exports = router;
