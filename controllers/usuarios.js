@@ -1,91 +1,173 @@
-/** @format */
-
-const path = require('path');
-const fs = require('fs');
-
 const { response } = require('express');
-const { v4: uuidv4 } = require('uuid');
-const { actualizarImagen } = require('../helpers/actualizar-imagen');
+const bcrypt = require('bcryptjs');
 
-const fileUpload = (req, res = response) => {
-	const tipo = req.params.tipo;
-	const id = req.params.id;
+const Usuario = require('../models/usuario');
+const { generarJWT } = require('../helpers/jwt');
 
-	// Validar tipo
-	const tiposValidos = ['hospitales', 'medicos', 'usuarios'];
-	if (!tiposValidos.includes(tipo)) {
-		return res.status(400).json({
-			ok: false,
-			msg: 'No es un médico, usuario u hospital (tipo)',
-		});
-	}
 
-	// Validar que exista un archivo
-	if (!req.files || Object.keys(req.files).length === 0) {
-		return res.status(400).json({
-			ok: false,
-			msg: 'No hay ningún archivo',
-		});
-	}
+const getUsuarios = async(req, res) => {
 
-	// Procesar la imagen...
-	const file = req.files.imagen;
+    const desde = Number(req.query.desde) || 0;
 
-	const nombreCortado = file.name.split('.'); // wolverine.1.3.jpg
-	const extensionArchivo = nombreCortado[nombreCortado.length - 1];
+    const [ usuarios, total ] = await Promise.all([
+        Usuario
+            .find({}, 'nombre email role google img')
+            .skip( desde )
+            .limit( 5 ),
 
-	// Validar extension
-	const extensionesValidas = ['png', 'jpg', 'jpeg', 'gif'];
-	if (!extensionesValidas.includes(extensionArchivo)) {
-		return res.status(400).json({
-			ok: false,
-			msg: 'No es una extensión permitida',
-		});
-	}
+        Usuario.countDocuments()
+    ]);
 
-	// Generar el nombre del archivo
-	const nombreArchivo = `${uuidv4()}.${extensionArchivo}`;
 
-	// Path para guardar la imagen
-	const path = `./uploads/${tipo}/${nombreArchivo}`;
+    res.json({
+        ok: true,
+        usuarios,
+        total
+    });
 
-	// Mover la imagen
-	file.mv(path, (err) => {
-		if (err) {
-			console.log(err);
-			return res.status(500).json({
-				ok: false,
-				msg: 'Error al mover la imagen',
-			});
-		}
+}
 
-		// Actualizar base de datos
-		actualizarImagen(tipo, id, nombreArchivo);
+const crearUsuario = async(req, res = response) => {
 
-		res.json({
-			ok: true,
-			msg: 'Archivo subido',
-			nombreArchivo,
-		});
-	});
-};
+    const { email, password } = req.body;
 
-const retornaImagen = (req, res = response) => {
-	const tipo = req.params.tipo;
-	const foto = req.params.foto;
+    try {
 
-	const pathImg = path.join(__dirname, `../uploads/${tipo}/${foto}`);
+        const existeEmail = await Usuario.findOne({ email });
 
-	// imagen por defecto
-	if (fs.existsSync(pathImg)) {
-		res.sendFile(pathImg);
-	} else {
-		const pathImg = path.join(__dirname, `../uploads/no-img.jpg`);
-		res.sendFile(pathImg);
-	}
-};
+        if ( existeEmail ) {
+            return res.status(400).json({
+                ok: false,
+                msg: 'El correo ya está registrado'
+            });
+        }
+
+        const usuario = new Usuario( req.body );
+    
+        // Encriptar contraseña
+        const salt = bcrypt.genSaltSync();
+        usuario.password = bcrypt.hashSync( password, salt );
+    
+    
+        // Guardar usuario
+        await usuario.save();
+
+        // Generar el TOKEN - JWT
+        const token = await generarJWT( usuario.id );
+
+
+        res.json({
+            ok: true,
+            usuario,
+            token
+        });
+
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            ok: false,
+            msg: 'Error inesperado... revisar logs'
+        });
+    }
+
+
+}
+
+
+const actualizarUsuario = async (req, res = response) => {
+
+    // TODO: Validar token y comprobar si es el usuario correcto
+
+    const uid = req.params.id;
+
+
+    try {
+
+        const usuarioDB = await Usuario.findById( uid );
+
+        if ( !usuarioDB ) {
+            return res.status(404).json({
+                ok: false,
+                msg: 'No existe un usuario por ese id'
+            });
+        }
+
+        // Actualizaciones
+        const { password, google, email, ...campos } = req.body;
+
+        if ( usuarioDB.email !== email ) {
+
+            const existeEmail = await Usuario.findOne({ email });
+            if ( existeEmail ) {
+                return res.status(400).json({
+                    ok: false,
+                    msg: 'Ya existe un usuario con ese email'
+                });
+            }
+        }
+        
+        campos.email = email;
+        const usuarioActualizado = await Usuario.findByIdAndUpdate( uid, campos, { new: true } );
+
+        res.json({
+            ok: true,
+            usuario: usuarioActualizado
+        });
+
+        
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({
+            ok: false,
+            msg: 'Error inesperado'
+        })
+    }
+
+}
+
+
+const borrarUsuario = async(req, res = response ) => {
+
+    const uid = req.params.id;
+
+    try {
+
+        const usuarioDB = await Usuario.findById( uid );
+
+        if ( !usuarioDB ) {
+            return res.status(404).json({
+                ok: false,
+                msg: 'No existe un usuario por ese id'
+            });
+        }
+
+        await Usuario.findByIdAndDelete( uid );
+
+        
+        res.json({
+            ok: true,
+            msg: 'Usuario eliminado'
+        });
+
+    } catch (error) {
+        
+        console.log(error);
+        res.status(500).json({
+            ok: false,
+            msg: 'Hable con el administrador'
+        });
+
+    }
+
+
+}
+
+
 
 module.exports = {
-	fileUpload,
-	retornaImagen,
-};
+    getUsuarios,
+    crearUsuario,
+    actualizarUsuario,
+    borrarUsuario
+}
