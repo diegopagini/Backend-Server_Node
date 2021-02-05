@@ -1,4 +1,5 @@
 /** @format */
+
 require('dotenv').config();
 
 const express = require('express');
@@ -6,22 +7,22 @@ const cors = require('cors');
 
 const { dbConnection } = require('./database/config');
 
-//Crear el servidor Express
+// Crear el servidor de express
 const app = express();
 
-//Configurar CORS
+// Configurar CORS
 app.use(cors());
 
-//Lectura y parseo del body
+// Lectura y parseo del body
 app.use(express.json());
 
-//Base de datos;
+// Base de datos
 dbConnection();
 
-//Rutas
+// Rutas
 app.use('/api/usuarios', require('./routes/usuarios'));
 app.use('/api/login', require('./routes/auth'));
 
 app.listen(process.env.PORT, () => {
-	console.log('Servidor corrioento en puerto', process.env.PORT);
+	console.log('Servidor corriendo en puerto ' + process.env.PORT);
 });

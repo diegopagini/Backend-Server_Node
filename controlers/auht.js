@@ -1,41 +1,44 @@
 /** @format */
 
 const { response } = require('express');
-const Usuario = require('../models/usuario');
-const bcryptjs = require('bcryptjs');
+const bcrypt = require('bcryptjs');
 
-const login = async (req, resp = response) => {
+const Usuario = require('../models/usuario');
+const { generarJWT } = require('../helpers/jwt');
+
+const login = async (req, res = response) => {
 	const { email, password } = req.body;
 
 	try {
-		//Verigicar email
-
+		// Verificar email
 		const usuarioDB = await Usuario.findOne({ email });
+
 		if (!usuarioDB) {
-			return resp.status(400).json({
+			return res.status(404).json({
 				ok: false,
 				msg: 'Email no encontrado',
 			});
 		}
 
 		// Verificar contraseña
-		const validPassword = bcryptjs.compareSync(password, usuarioDB.password);
+		const validPassword = bcrypt.compareSync(password, usuarioDB.password);
 		if (!validPassword) {
-			return resp.status(400).json({
+			return res.status(400).json({
 				ok: false,
-				msg: 'Contraseña no valida',
+				msg: 'Contraseña no válida',
 			});
 		}
 
-		//Generar un TOKEN - JWT
+		// Generar el TOKEN - JWT
+		const token = await generarJWT(usuarioDB.id);
 
-		resp.json({
+		res.json({
 			ok: true,
-			msg: 'Hola',
+			token,
 		});
 	} catch (error) {
 		console.log(error);
-		resp.status(500).json({
+		res.status(500).json({
 			ok: false,
 			msg: 'Hable con el administrador',
 		});
