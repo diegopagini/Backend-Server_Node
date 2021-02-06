@@ -1,77 +1,72 @@
+/** @format */
+
 const Usuario = require('../models/usuario');
 const fs = require('fs');
 
 const Medico = require('../models/medico');
 const Hospital = require('../models/hospital');
 
-const borrarImagen = ( path ) => {
-    if ( fs.existsSync( path ) ) {
-        // borrar la imagen anterior
-        fs.unlinkSync( path );
-    }
-}
+const borrarImagen = (path) => {
+	if (fs.existsSync(path)) {
+		// borrar la imagen anterior
+		fs.unlinkSync(path);
+	}
+};
 
+const actualizarImagen = async (tipo, id, nombreArchivo) => {
+	let pathViejo = '';
 
-const actualizarImagen = async(tipo, id, nombreArchivo) => {
+	switch (tipo) {
+		case 'medicos':
+			const medico = await Medico.findById(id);
+			if (!medico) {
+				console.log('No es un médico por id');
+				return false;
+			}
 
-    let pathViejo = '';
-    
-    switch( tipo ) {
-        case 'medicos':
-            const medico = await Medico.findById(id);
-            if ( !medico ) {
-                console.log('No es un médico por id');
-                return false;
-            }
+			pathViejo = `./uploads/medicos/${medico.img}`;
+			borrarImagen(pathViejo);
 
-            pathViejo = `./uploads/medicos/${ medico.img }`;
-            borrarImagen( pathViejo );
+			medico.img = nombreArchivo;
+			await medico.save();
+			return true;
 
-            medico.img = nombreArchivo;
-            await medico.save();
-            return true;
+			break;
 
-        break;
-        
-        case 'hospitales':
-            const hospital = await Hospital.findById(id);
-            if ( !hospital ) {
-                console.log('No es un hospital por id');
-                return false;
-            }
+		case 'hospitales':
+			const hospital = await Hospital.findById(id);
+			if (!hospital) {
+				console.log('No es un hospital por id');
+				return false;
+			}
 
-            pathViejo = `./uploads/hospitales/${ hospital.img }`;
-            borrarImagen( pathViejo );
+			pathViejo = `./uploads/hospitales/${hospital.img}`;
+			borrarImagen(pathViejo);
 
-            hospital.img = nombreArchivo;
-            await hospital.save();
-            return true;
+			hospital.img = nombreArchivo;
+			await hospital.save();
+			return true;
 
-        break;
-        
-        case 'usuarios':
+			break;
 
-            const usuario = await Usuario.findById(id);
-            if ( !usuario ) {
-                console.log('No es un usuario por id');
-                return false;
-            }
+		case 'usuarios':
+			const usuario = await Usuario.findById(id);
+			if (!usuario) {
+				console.log('No es un usuario por id');
+				return false;
+			}
 
-            pathViejo = `./uploads/hospitales/${ usuario.img }`;
-            borrarImagen( pathViejo );
+			pathViejo = `./uploads/hospitales/${usuario.img}`;
+			borrarImagen(pathViejo);
 
-            usuario.img = nombreArchivo;
-            await usuario.save();
-            return true;
+			usuario.img = nombreArchivo;
+			await usuario.save();
+			return true;
 
-        break;
-    }
+			break;
+	}
+};
 
-
-}
-
-
-
-module.exports = { 
-    actualizarImagen
-}
+module.exports = {
+	actualizarImagen,
+};
